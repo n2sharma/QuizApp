@@ -1,33 +1,66 @@
-import { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useParams, useNavigate } from 'react-router-dom';
+import { Question } from '../types/quiz';
 
-const quizData = [
+const quizDataLocal = [
   {
-    question: 'What is the capital of France?',
-    options: ['Berlin', 'Madrid', 'Paris', 'Rome'],
+    text: 'What is the capital of France?',
+    options: [
+      { text: 'Berlin' },
+      { text: 'Madrid' },
+      { text: 'Paris' },
+      { text: 'Rome' },
+    ],
     correctAnswerIndex: 2,
   },
   {
-    question: 'Which planet is known as the Red Planet?',
-    options: ['Earth', 'Mars', 'Jupiter', 'Venus'],
+    text: 'Which planet is known as the Red Planet?',
+    options: [
+      { text: 'Earth' },
+      { text: 'Mars' },
+      { text: 'Jupiter' },
+      { text: 'Venus' },
+    ],
     correctAnswerIndex: 1,
   },
   {
-    question: "Who wrote 'Hamlet'?",
+    text: "Who wrote 'Hamlet'?",
     options: [
-      'Charles Dickens',
-      'William Shakespeare',
-      'Mark Twain',
-      'Leo Tolstoy',
+      { text: 'Charles Dickens' },
+      { text: 'William Shakespeare' },
+      { text: 'Mark Twain' },
+      { text: 'Leo Tolstoy' },
     ],
     correctAnswerIndex: 1,
   },
 ];
 
 const QuizPage = () => {
-  const { id } = useParams(); // <-- Get the :id from URL
+  const location = useLocation();
+  const { id } = useParams();
   const navigate = useNavigate();
+
+  const [quizData, setQuizData] = useState<Question[]>([]);
+
+  useEffect(() => {
+    if (location.state?.quiz) {
+      setQuizData(location.state.quiz.questions);
+    } else {
+      const stored = localStorage.getItem('quizzes');
+      if (stored && id) {
+        const quizzes = JSON.parse(stored);
+        console.log('quizzes: ', quizzes);
+        const found = quizzes.find((q) => String(q.id) === id);
+        if (found) {
+          setQuizData(found.questions);
+        } else {
+          setQuizData(quizDataLocal); // fallback if ID not found
+        }
+      }
+    }
+  }, [id, location.state]);
+
+  console.log('quizData: ', quizData);
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -37,6 +70,7 @@ const QuizPage = () => {
 
   const handleOptionClick = (index: number) => {
     setSelectedOption(index);
+    console.log('Index: ', index);
     if (index === currentQuestion.correctAnswerIndex) {
       setScore((prev) => prev + 1);
     }
@@ -51,11 +85,20 @@ const QuizPage = () => {
     }
   };
 
+  if (!currentQuestion) {
+    return <div className="text-white">No questions available.</div>;
+  }
+
+  console.log('currentQuestion', currentQuestion);
+  console.log('currentQuestion.text', currentQuestion.text);
+
+  if (!quizData.length) return <p className="text-white">Loading quiz...</p>;
+
   return (
     <div className="min-h-screen bg-[#242424] text-white flex items-center justify-center p-4">
       <div className="max-w-xl w-full bg-[#1e1e1e] rounded-2xl p-6 shadow-lg space-y-6">
         <h2 className="text-sm text-gray-400">Quiz ID: {id}</h2>
-        <h2 className="text-xl font-semibold">{currentQuestion.question}</h2>
+        <h2 className="text-xl font-semibold">{currentQuestion.text}</h2>
 
         <div className="grid gap-4">
           {currentQuestion.options.map((option, index) => (
@@ -69,7 +112,7 @@ const QuizPage = () => {
                     : 'bg-gray-800 border-gray-600 hover:bg-gray-700'
                 }`}
             >
-              {option}
+              {option.text}
             </button>
           ))}
         </div>
